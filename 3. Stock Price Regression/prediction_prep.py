@@ -66,7 +66,8 @@ def get_regression_df(ticker_name, comments, fin_data, sentiment):
     
     #### JOIN POST DATA ######
     # rolling comment count or percentage change is not useful
-    for i in [3, 7]:
+    #for i in [3, 7]:
+    for i in range(7):
         for metric in ['comments_neutral','comments_positive','comment_count', 'pct_pos_comments']:
             if i > 1:
                 roll_avg = df[metric].rolling(i).sum()
