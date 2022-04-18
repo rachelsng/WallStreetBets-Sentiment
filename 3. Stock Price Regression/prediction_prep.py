@@ -4,16 +4,18 @@ import datetime
 
 def get_regression_df(ticker_name, comments, fin_data, sentiment):
     
-    ##### GET COMMENT VOLUME ######
     # Drop NA from comments
     comments = comments[~comments['created_utc'].isna()]
-
+    comments = comments[comments['body']!='removed']
+    #print(len(comments))
+    comments = comments.drop_duplicates(subset = ['id'])
+    #print(len(comments))
     ##### JOIN SENTIMENT DATA ######
+    sentiment = sentiment[sentiment['body']!='removed']
     sentiment = sentiment[['id', 'predicted sentiment']]
     comments = comments.merge(sentiment, how = 'left', on = 'id' )
-    print('There are {} nulls in sentiment column.'.format(len(comments[comments['predicted sentiment'].isna()])))
-    print('Dropping nulls.')
     comments = comments.dropna(subset = ['predicted sentiment'])
+    #print(len(comments))
 
     # Grab only the ticker assignment and the date
     comments['created_utc'] = pd.to_numeric(comments['created_utc'], errors = 'coerce')
@@ -22,10 +24,11 @@ def get_regression_df(ticker_name, comments, fin_data, sentiment):
     comments['created_utc'] = pd.to_datetime(comments['created_utc'],unit= 's')
     comments['date'] = comments['created_utc'].dt.date
     comments['date'] = pd.DatetimeIndex(comments['date'])
+    #print(len(comments))
 
     # Only one line of weird values, drop
-    comments[comments['date'] < pd.Timestamp('2021-01-01')]
     comments=comments[~(comments['date'] < pd.Timestamp('2021-01-01'))]
+    #print(len(comments))
 
     # Create grouped DF
     grouped = comments.groupby(['date', 'ticker', 'predicted sentiment'])[['index']].count().reset_index()
@@ -35,6 +38,10 @@ def get_regression_df(ticker_name, comments, fin_data, sentiment):
     grouped = grouped.fillna(0)
     grouped.rename(columns={0: 'comments_neutral',
                         1:'comments_positive'}, inplace = True)
+    if 'comments_positive' not in grouped.columns:
+        grouped['comments_positive'] = 0
+    if 'comments_neutral' not in grouped.columns:
+        grouped['comments_neutral'] = 0
     grouped['comment_count'] = grouped['comments_neutral'] +grouped['comments_positive']
     grouped['pct_pos_comments'] = (grouped['comments_positive'] / (grouped['comment_count']+0.0001)) *100
 
